@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <link href="../../../../../css/custom.css" rel="stylesheet">
+
+        <title>CMSpit - ENG</title>
+    </head>
+
+  <body style="background-color:#201f1f; color: aliceblue;">
+
+    <!--Beginning of content-->
+    <main>
+      <div class="container mb-4">
+        <div class="container">
+            <div class="row">
+              <div class="heading mt-4 border-bottom">
+                <h2>TryHackMe - CMSpit</h2>
+              </div>
+              <!--Beginning of Content-->
+                <div class="text-break">
+                <p class="mt-4 pb-2">
+                    <p>Creator: <a href="https://tryhackme.com/p/stuxnet">Stuxnet</a></p>
+                    <p>url: https://tryhackme.com/room/cmspit</p>
+                    Prerequisite:
+                    <ul>
+                        <li>Basic knowledge of Linux Terminal</li>
+                        <li>Basic knowledge of Burpsuite</li>
+                        <li>Basic knowledge of Metasploit</li>
+                        <li>Basic knowledge of Linux Privilege Escalation</li>
+                    </ul>
+
+                    <span class="text-muted">> All exploit is run and tested on Kali Linux</span>
+                </p>
+
+                <!--Recon-->
+                <p class="mt-4 pb-2 border-top">
+                    <h3>Reconnaissance</h3>
+                    Run Nmap scan to find possible entries point<br>
+                    <img src="img/Nmap Scan.png"></img><br>
+                    Found port <code>22</code> and <code>80</code><br>
+
+                    Checking the website<br>
+                    <img src="img/Login Page.png"><br>
+                    It is login page with <code>Cockpit</code> name on it. 
+                    Since the title of the room is called `CMSpit` 
+                    maybe this is a CMS (Content Management System). 
+                    With quick google we can confirm yes this is a <code>Cockpit CMS Login Page</code>
+                    <br>
+                    Lets see what this page is about, use <code>View Page Source</code> on your browser
+                    <ol>
+                        <li>
+                            While searching for version number, I found these 3<br>
+                            - <code>link href="/assets/app/css/style.css?ver=0.11.1</code><br>
+                            - <code>script src="/storage/tmp/7a812eebe1eda3162d79b4109b4787d4.js?ver=0.11.1</code><br>
+                            - <code>/storage/tmp/4cc5a0d2487ec7f4c75b0cc9115bf601.js?ver=0.11.1</code>
+                        </li>
+                        <li>
+                            Found out how login system worked<br>
+                            <code>form class="uk-form" method="post" action="/auth/check" onsubmit="{ submit }"</code><br>
+                            This part basically mean once we complete our login process 
+                            (We type in username and password) the info will go to <code>/auth/check</code>, maybe for 
+                            checking the <i>credential</i> of our login
+                        </li>
+                        <li>
+                            Since we know we have <code>/auth</code> directory which sounds very important, 
+                            lets search what we have for <code>/auth</code><br>
+                            - <code>class="uk-button uk-button-link uk-link-muted" href="/auth/forgotpassword"</code><br>
+                            - Another <code>App.request('/auth/check',</code><br>
+                        </li>
+                    </ol>
+                    So, lets make a summary for what we have found so far<br>
+                    - Version number, 90% is <code>0.11.1</code><br>
+                    - There are 2 important info found, function for checking authentication 
+                    from <code>/auth/check</code> and possibly change password function <code>/auth/forgotpassword</code><br>
+                    <br>With this information we have, lets google what we can use it for
+                </p>
+
+                <!--Exploit-->
+                <p class="mt-4 pb-2 border-top">
+                    <h3>Exploiting</h3>
+                    With quick googling I found there are a vulnerabilities in Cockpit CMS version 0.11.1,  
+                    <b>CVE-2020-35846</b> and <b>CVE-2020-35847</b> where you can enumerate username and 
+                    reset this found username's password. 
+                    There are a lot of article on how to do the exploits, but I decided to use 2 source. 
+                    You can use which one, either method will lead you somewhere. 
+                    We will use <b>Burpsuite</b> and <b>Metasploit</b>.<br>
+
+                    <br>
+                    <h4 id="burpsuite">1. Burpsuite</h4>
+                        <span class="text-muted">source: <a href="https://swarm.ptsecurity.com/rce-cockpit-cms/" style="color: aquamarine;">PT Swarm</a></span>
+                        <br>There are 2 step we will accomplish using this method, Username Enumeration and Reset Password
+                        <ol>
+                            <li>
+                                Username Enumeration - CVE-2020-35846<br>
+                                In most cases, there is always a username of <code>admin</code> in login page. 
+                                So lets find out if we have admin user.
+                                <ul>
+                                    <li>
+                                        Start up your Burpsuite</li>
+                                    <li>
+                                        Activate proxy on your browser</li>
+                                    <li>
+                                        Type in username:password. I did <code>admin:0</code>
+                                    </li>
+                                    <li>
+                                        Burp will catch the <code>post</code> request to <code>/auth/check</code>
+                                    </li>
+                                    <li>
+                                        Send the <code>post</code> request to <code>Repeater</code> 
+                                    </li>
+                                </ul>
+                                Now we have multiple option we can use to try extract username. 
+                                Play around and see if you can find which one working by yourself. 
+                                What I use is number 3, using MongoLite variable<br>
+                                <img src="img/Burp Result - MongoDB.png">
+                                <br>With this, Now we have 4 username. Lets use Admin and reset the password
+                            </li><br>
+                            <li>
+                                Reset Password - CVE-2020-35847 Reading through our, 
+                                the website need a reset password token in order to resetting password. 
+                                Lets extract token and try to reset <code>admin</code> password<br>
+                                <ul>
+                                    <li>
+                                        Go back to login page
+                                    </li>
+                                    <li>
+                                        Login with username:password as <code>admin:0</code>
+                                    </li>
+                                    <li>
+                                        Catch login <code>post</code> request with burp and send it to repeater
+                                    </li>
+                                    <li>
+                                        In line 1, change it to <code>POST /auth/newpassword HTTP/1.1</code>
+                                    </li>
+                                    <li>
+                                        On line 14 or 15 where there is our login information, replace all as shown below
+                                        <p>From</p>
+                                        <img src="img/Burp Reset Password - Before.png" alt="Burp Reset Password - Before">
+                                        <p>To</p>
+                                        <img src="img/Burp Reset Password - After.png" alt="Burp Reset Password - After">
+                                        <p>
+                                            What we did is we dump everything related to <code>token</code> belong to 
+                                            the admin. If succeed our extraction, you should have a text start 
+                                            with <code>string(48)</code>. Save it somewhere starting from 
+                                            <code>rp-fe</code> till the very end.
+                                        </p>
+                                        <img src="img/Burp Result - Extract Token Reset.png" style="width: 1052px; height: 444px;" alt="Burp Result - Extract Token Reset">
+                                        Right click on <code>Request</code> page and choose 
+                                        <code>Send to Repeater</code> and now we send our token to extract every 
+                                        info admin has
+                                        <img src="img/Burp Result - Token Info Extract.png" style="width: 1052px; height: 444px;" alt="Burp Result - Token Info Extract">
+                                        With this extraction, we have
+                                        <ul>
+                                            <li>Username</li>
+                                            <li>The name of the username</li>
+                                            <li>Email</li>
+                                            <li>Status</li>
+                                            <li>Group</li>
+                                            <li>Hashed password</li>
+                                            <li>Reset token</li>
+                                        </ul>
+                                        Since we know what variable is called inside the system referring to password, 
+                                        we can now reset admin password
+                                        <ul>
+                                            <li>
+                                                Right click on our current <code>Request</code> page and choose <code>Send to Repeater</code>
+                                            </li>
+                                            <li>
+                                                Change line 1 from <code>/auth/newpassword</code> to <code>/auth/resetpassword</code>
+                                            </li>
+                                            <li>
+                                                Add comma (,) to the very end of <code>token</code> and type in password with the new password
+                                            </li>
+                                        </ul>
+                                        <img src="img/Burp Result - Change Password.png" style="width: 1052px; height: 444px;" alt="Burp Result - Change Password">
+                                        You should be able to login to the website with new password, 
+                                        but for the sake of learning lets see our 2nd method of this exploit.
+
+                                    </li>
+                                </ul>
+                            </li>
+                        </ol>
+                    <h4 id="metasploit">2. Metasploit</h4>
+                        <span class="text-muted">source: <a href="https://packetstormsecurity.com/files/162282/Cockpit-CMS-0.11.1-NoSQL-Injection-Remote-Command-Execution.html" style="color: aquamarine;">Packet Storm</a></span>
+                        <br>Detail on how the exploit is work is well explained by Packet Strom. By using metasploit,
+                        all process like in <a href="#burpsuite">burpsuite</a> can be done automatically.<br>
+                        <ol>
+                            <li>
+                                Start metasploit by typing <code>msfconsole</code>
+                            </li>
+                            <li>
+                                Search Cockpit CMS entries <code>search Cockpit</code>
+                            </li>
+                            <li>
+                                There is only 1, lets use it</li>
+                            <li>
+                              We need 3 parameter
+                              <ul>
+                                <li>
+                                    <code>RHOST</code> which is the target IP
+                                </li>
+                                <li>
+                                    <code>RPORT</code> default to 80, <strong>DO NOT</strong> change this
+                                </li>
+                                <li>
+                                    <code>TARGETURI</code> vulnerable point, we knew this is <code>/auth/check</code> from our research earlier
+                                </li>
+                                <li>
+                                    <code>LHOST</code> our machine IP, since the target run on TryHackMe VPN we 
+                                    need to set this IP to our VPN IP, you can find this using 
+                                    <code>ifconfig tun0</code>
+                                </li>
+                                <li>
+                                    After all set, run exploit by typing <code>run</code><br>
+                                </li>
+                              </ul>
+                            </li>
+                        </ol>
+                        There are 2 stages; <strong>1</strong>. Using CVE-2020-35846 to find username 
+                        <strong>2</strong>. CVE-2020-35847 found info needed to reset the password of 
+                        this username. Familiar? Because 2 of this method is using the same basic, 
+                        just different tool.>
+                        After our 1st stage complete, metasploit will tell us there are 4 username found. 
+                        If you read from <code>show options</code> earlier there is options to 
+                        set <code>USER</code>. We need this to run the 2nd stage. 
+                        Go ahead set <code>USER</code>, I set it as admin.<br><br>
+                    
+                        We will find the same result like what we did with Burpuite when we extract info using 
+                        admin&#39;s token. But this way we automatically reset 
+                        and create new password. Go ahead login to the website using our new password.
+                </p>
+
+                <!--Reverse Shell-->
+                <p class="mt-4 pb-2 border-top">
+                    <h3>Reverse Shell</h3>
+                    What is reverse shell? In short, we trick the web server to run certain command to 
+                    give us its shell to control the computer. Its not a complete shell like SSH, 
+                    but its useful enough to get more info in our target machine. 
+                    <br>Follow instructions below to start.
+                    <ol>
+                        <li>
+                            Click the Cockpit logo on top left corner
+                        </li>
+                        <li>
+                            There are <code>Dashboard</code>, <code>Asstes</code>, <code>Finder</code>, 
+                            <code>Settings</code>, and <code>Accounts</code>. 
+                            We only interested in <code>Finder</code> but go ahead exploring what this web app has 
+                            if you want</li>
+                        <li>
+                          <code>Finder</code> part is where any content used in our Cockpit is listed. 
+                          This is the best place for planting our reverse shell script. This is also where 
+                          <code>webflag.txt</code> is.
+                        </li>
+                        <li>
+                            Create new file called <code>revshell.php</code>
+                        </li>
+                        <li>
+                            Go to <a href="https://www.revshells.com/">https://www.revshells.com/</a>
+                        </li>
+                        <li>
+                            On <code>IP &amp; Port</code> part, change the IP to your tun0 and port to 
+                            <code>5555</code> 
+                            <br><img src="img/revshells IP and port setting.png" alt="Revshells IP and port Setup">
+                        </li>
+                        <li>
+                            Run a new terminal using command on <code>Listener part</code>
+                        </li>
+                        <li>
+                            On tab called <code>Reverse</code>, scroll down until you found <code>PHP Pentest Monkey</code>
+                        </li>
+                        <li>
+                            Copy everything using <code>copy</code> button to your <code>revshell.php</code> file
+                        </li>
+                        <li>
+                            Upload it to <code>Finder</code>
+                        </li>
+                        <li>
+                            Create new tab in your browser, and access <code>10.10.194.178/revshell.php</code> 
+                            to activate revshell. Remember to change the IP above with your target IP, 
+                            if done correctly you should have shell in your <code>Listener</code> terminal 
+                            <img src="img/revshell succed.png" alt="Revshell Success"> 
+                        </li>
+                      </ol>
+                </p>
+
+                <!--www-data-->
+                <p class="mt-4 pb-2 border-top">
+                    <h3>www-data</h3>
+                    If you run command <code>whoami</code>, you notice we run this command as 
+                    <code>www-data</code>. What is <code>www-data</code>? 
+                    Quoting from AskUbuntu <a href="https://askubuntu.com/questions/873839/what-is-the-www-data-user">thread</a>:<br>
+                    
+                    <small class="text-muted">
+                        <code>www-data</code> is the user that web servers on Ubuntu (Apache, nginx, for example) 
+                        use by default for normal operation. The web server process can access any file 
+                        that <code>www-data</code> can access. It has <b>no other importance</b>.
+                    </small>
+
+                    <br>Or for more complicated explanation, <code>www-data</code> is the user in the web 
+                    server which the one who will serving the client. It is important to only give 
+                    <code>www-data</code> the most basic permissions for security reason. 
+                    <code>www-data</code> is also can run database, which is an absolute since 
+                    <code>www-data</code> need database to run function like login where it need compare 
+                    username and password from user input with database to grant the 
+                    client to access the website. 
+
+                    <p>We will use <code>www-data</code> permissions to: </p>
+                    <ol>
+                        <li>
+                            Find another username that can use our target machine
+                        </li>
+                        <li>
+                            Find out how we can access thus username though SSH to get full access
+                        </li>
+                        <li>
+                          <p>Find another username so we can have more access</p>
+                          <ul>
+                            <li>Run <code>pwd</code> to check where we are. It will tell us we are in the 
+                                <code>very bottom of directory</code> indicated by <code>/</code>. If yours different 
+                                then type in <code>cd /</code> which bascially will take us to the very bottom of 
+                                directory
+                            </li>
+                            <li>Run <code>ls</code> to see if we have <code>home</code> directory. 
+                                This way we know what other user using this machine 
+                            </li>
+                            <li>With command above, we confirm there is <code>home</code> directory. 
+                                Change our working directory to home <code>cd home</code>
+                            </li>
+                            <li>Running <code>ls</code> we have info of username in this machine If you run 
+                                command <code>ls</code> inside user directory, there is <code>user.txt</code> 
+                                which we cant access it, since we are <code>www-data</code>. We are not allow to access this file. 
+                                Hence we need to get other username </li>
+                          </ul>
+                        </li>
+                        <li>
+                            <p>SSH using our target username Lets see what we can use to find out our username password</p>
+                            <ul>
+                            <li>Run command <code>systemctl</code>. Scroll through you will find entries about mongodb running, 
+                                lets see what it has for us. 
+                                <img src="img/systemctl.png" alt="systemctl" style="width: 1052px;">
+                            </li>
+                            <li>Run command <code>mongo</code> to access mongodb 
+                                and sure enough we dont need password. Refer to 
+                                <a href="https://docs.mongodb.com/manual/reference/mongo-shell/">this source</a>
+                                to learn more about how to use mongodb shell.
+                            </li>
+                            <li>
+                                Use <code>show databases</code>
+                            </li>
+                            <li>1 interesting database, <code>sudousersbak</code>. <code>.bak</code> file in linux usually 
+                                used for backup. 
+                                Maybe our user store the backup of sudo user list in the database 
+                                , and since we can access without password we can just see what is inside </li>
+                            <li>Run command <code>use sudousersbak</code> then <code>show collections</code>
+                            </li>
+                            <li>There are 3 entries, <code>flag</code>, <code>system.indexes</code>, <code>user</code>. </li>
+                            <li>Run command <code>db.user.find()</code> to see whats inside, there are password for 
+                                our username of target machine </li>
+                            <li>Save it somewhere to run SSH as our username 
+                                <blockquote>
+                                <p>
+                                  <code>flag</code> here is for db flag asked in the room. go ahead use <code>db.flag.find()</code>
+                                </p>
+                              </blockquote>
+                            </li>
+                          </ul>
+                        </li>
+                      </ol>
+                    <p>SSH to our target machine using credential we found</p>
+                    <img src="img/SSH.png" alt="login ssh using found username and password">
+                    <p>Remember to change the IP to your target machine IP</p>
+                </p>
+
+                <!--Privilege Escalation-->
+                <p class="mt-4 pb-2 border-top">
+                    <h3>Privilege Escalation</h3>
+                    <p>Since you are now an actual user in the machine, you can now print 
+                        <code>user.txt</code>
+                    </p>
+                    <p>Now we need privilege escalation to root. The final task we have is to get 
+                        <code>root.txt</code>. For that we need to privilege escalation to root. 
+                    </p>
+                    <p>What is privilege escalation? In short, each user in Linux has certain permissions 
+                        they can use. Remember our <code>www-data</code> can't access <code>user.txt</code> 
+                        belong to our SSH user? Its because <code>www-data</code> is not listed 
+                        in the permissions of who can access it. And <code>root.txt</code> which can be 
+                        found usually in <code>/root/root.txt</code> is own by <code>root</code> and you guess it,
+                         also only allow <code>root</code> to access this. 
+                    </p>
+
+                    <p>
+                        So, how then. Well its either; 1. We escalate to root or 2. We access <code>root.txt</code> as our
+                        current user.
+                    </p>
+                    <p>For this room we can use the second option, accessing <code>root.txt</code> 
+                        without even being <code>root</code> by using another exploit.
+                    </p>
+
+                    <ul>
+                        <li>
+                            Run <code>sudo -l</code> to see what command we can run as <code>sudo</code> 
+                            <img src="img/sudo -l.png" alt="sudo -l command">
+                        </li>
+                        <li>
+                            The result show us that we can run <code>sudo exiftool</code> as <code>root</code> with no password 
+                        </li>
+                        <li>
+                            Go to <a href="https://gtfobins.github.io/">https://gtfobins.github.io/</a> and scroll 
+                            down until you find an entries related to <code>exiftool</code>
+                        </li>
+                        <li>
+                            Click on it and you see down below there is entry of running <code>exitool</code> as sudo 
+                        </li>
+                    </ul>
+                    <img src="img/Exiftool GTFO Bin.png" alt="exiftool">
+                    <p>In here we have to declare 2 bash variable, <code>LFILE</code> and <code>INPUT</code> As describe on the image: 
+                    </p>
+                      <ul>
+                        <li>
+                          <code>LFILE=file_to_write</code> is use to tell bash where we will save the new file
+                        </li>
+                        <li>
+                          <code>INPUT=input_file</code> is use to tell bash where to use the data for the input to new file
+                        </li>
+                      </ul>
+                      <p>
+                        Basically we want to copy anything that inside of <code>root.txt</code> into a new file, 
+                        <em>remember</em> only <code>root</code> allowed to do any activity with 
+                        <code>root.txt</code>. With this method we can copy anything in <code>root.txt</code> 
+                        without even being root.
+                      </p>
+                      <img src="img/Exiftool - Exploit.png" alt="Exiftool - Exploit">
+                      <p>You may notice and wonder why I change directory into <code>/tmp</code>, 
+                        the reason is because its quicker to type
+                    </p>
+                    <p>And you should have the final flag.</p>
+                    <p>While doing research for the question for PoC and CVE vulnerability affecting the binary 
+                        assigned to the system user, I found an <a href="https://www.google.com/search?client=firefox-b-d&q=exiftool+cve">article</a> from 
+                        Conviso&#39;s blog called &quot;A case study on: CVE-2021-22204 – Exiftool RCE&quot;
+                    </p>
+                    <p>In short, the author of the blog explaining the Prove of Concept (PoC) of CVE-2021-22204. 
+                        With this method, we can also get the same result as above, which not 
+                        covered in this walkthrough.</p>
+                </p>
+
+                <!--Summary-->
+                <p class="mt-4 pb-2 border-top">
+                    <h3>Summary</h3>
+                    <p>CMSpit technically cover 3 CVE</p>
+                    <ul>
+                        <li>CVE-2020-35846</li>
+                        <li>CVE-2020-35847</li>
+                        <li>CVE-2021-22204</li>
+                    </ul>
+                    <p>For CVE-2020-35846 and CVE-2020-35847 we hopefullt learned:</p>
+                    <ul>
+                        <li>
+                            <p>
+                                Using burpsuite by modifying the <code>request</code> method of HTTP where we 
+                            injecting a mongo query. This happen because <code>check</code> method from
+                             Auth controller which responsible for authenticating app user in 
+                             Cockpit CMS version 0.11.1 does not properly check user input parameter, 
+                             which allowing attacker to embedding an object with arbitrary MongoDB operators 
+                             in the query which allowing us to enumerate username. 
+                             This vulnerabilities found on <b>14th October 2020</b> and 
+                             fixes on <b>15th October 2020</b>. 
+                            </p>
+                            <p>
+                                But then on 15th March 2021 by using NoSQL injection effecting on 
+                                <code>/auth/newpassword</code> where it allowing force reset password 
+                                through <code>request</code> method. This vulnerability make it possible for 
+                                attacker to change password of a user.
+                            </p>
+                        </li>
+                        <li>
+                            By using Metasploit module, we manage to do the same as burpsuite method but quicker. 
+                            There are not much of an explanation since its the same exploit, just different tools.
+                        </li>
+                    </ul>
+                    <p>
+                        CVE-2021-22204 will not be covered since its already well explained in 
+                        <a href="(https://www.google.com/search?client=firefox-b-d&q=exiftool+cve">Conviso</a> 
+                        blog. The exploit provided from GTFOBins already enough for us.
+                    </p>
+                </p>
+
+                <!--Feedback-->
+                <p class="mt-4 pb-2 border-top">
+                    <p>
+                        Let me know if I did terrible mistake, or I explained it wrong.
+                    </p>
+                    <p>
+                        Im not an expert on this subject. I wrote this as a walkthrough blog for note to myself 
+                        in the future. Hopefully it also helpfull for you too.
+                    </p>
+                    <ul>
+                        <li>
+                            Send your correction to my <a href="https://twitter.com/hatami_rb">twitter account</a>
+                        </li>
+                        <li>
+                            Or send an email to <a href="mailto:althemier@gmail.com">my email</a>
+                        </li>
+                    </ul>
+
+                    <p>
+                        That its, thank you.
+                    </p>
+                </p>
+
+                <p class="text-muted">Uploaded: 05/09/2021</p>
+                <p class="text-muted">Last Update: -</p>
+                </div>
+            </div>
+        </div>
+      </div>
+    </main>
+
+    <!--End of Content-->
+
+    <!--Footer-->
+
+    <footer class="sticky-footer">
+      <div class="container my-auto">
+        <div class="copyrigth text-center my-auto pb-4">
+          <span>Copyright &copy; Me I guess ¯\_(ツ)_/¯ , I google alot. Copy as you wish, just credit me if its possible. 
+            Design from: <a href="https://youtu.be/dQw4w9WgXcQ" style="color: aquamarine;">The Internet</a></span>
+        </div>
+      </div>
+    </footer>
+    <!--End of Footer-->
+    <!-- Optional JavaScript; choose one of the two! -->
+
+    <!-- Option 1: Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+
+    <!-- Option 2: Separate Popper and Bootstrap JS -->
+    <!--
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+  -->
+  </body>
+</html>
+
