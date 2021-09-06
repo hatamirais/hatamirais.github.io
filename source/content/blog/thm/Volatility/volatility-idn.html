@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <link href="../../../../../css/custom.css" rel="stylesheet">
+
+        <title>Volatility - Bahasa</title>
+    </head>
+
+  <body style="background-color:#201f1f; color: aliceblue;">
+
+    <!--Beginning of content-->
+    <main>
+      <div class="container mb-4">
+        <div class="container">
+            <div class="row">
+              <div class="heading mt-4 border-bottom">
+                <h2>TryHackMe - Volatility</h2>
+              </div>
+              <!--Beginning of Content-->
+                <div class="text-break">
+                <p class="mt-4 pb-2">
+                    <p>Creator: 
+                        <a href="https://tryhackme.com/p/DarkStar7471">DarkStar7471</a> 
+                        and
+                        <a href="https://tryhackme.com/p/cmnatic">cmnatic</a>
+                    </p>
+                    <p>url: https://tryhackme.com/room/bpvolatility</p>
+                    Setup :
+                    <ul>
+                        <li>Windows 10</li>
+                        <li>Versi Volatility 2.6</li>
+                    </ul>
+                    <p>
+                        Room ini akan mengenalkan <i>tool</i> yang digunakan di dunia forensik dalam menganalisa data yang 
+                        di peroleh dari RAM, yaitu dengan 
+                        <a href="https://www.volatilityfoundation.org">Volatility</a>. 
+                        Sebelum mengerjakan di sarankan untuk membuat folder baru khusus untuk room ini, 
+                        karena akan banyak melakukan penyimpanan data hasil.
+                    </p>
+                </p>
+
+                <!--Task 1-->
+                <p class="mt-4 pb-2 border-top">
+                    <h3>Task 1 - Intro</h3>
+                    <p>
+                        Pertama, install Volatility dengan download dari 
+                        <a href="https://www.volatilityfoundation.org/releases">webiste Volatility</a> dan
+                        langsung di <i>extract</i>. Buka <code>cmd</code> dimana volatility tadi di extract. 
+                        Untuk setup volatility dapat dilakukan dengan mengetikkan command 
+                        <code>volatility_2.6_win64_standalone.exe -h</code> di terminal.
+                        <br>
+                        Jika berhasil, maka terminal akan mengeluarkan output berupa <code>options</code> 
+                        yang bisa digunakan dengan volatility, tanda volatility siap digunakan.
+                        <img src="img/volatility_success_first_setup.png">
+                        <br>
+                        <span class="text-muted">Sesuaikan angka 2.6 <code>volatility_2.6_win64_standalone.exe</code> 
+                            dengan versi volatility yang kalian punya.</span>
+                    </p>
+                </p>
+
+                <!--Task 2-->
+                <p class="mt-4 pb-2 border-top">
+                    <h3>Task 2 - Obtaining Memory Sample</h3>
+                    <p>
+                        Semua jawaban ada di bacaan yang di sediakan
+                    </p>
+                </p>
+
+                <!--Task 3-->
+                <p class="mt-4 pb-2 border-top">
+                    <h3>Task 3 - Examining Our Patient</h3>
+                    <p>
+                        Klik <code>Download task files</code>, taruh di tempat yang mudah di arahkan di terminal, misal 
+                        dimana volatility di ekstrak.
+                    </p>
+                    <p>
+                        <ol>
+                            <li>
+                                <p style="color: rgb(182, 182, 112);">
+                                    First, let's figure out what profile we need to use. 
+                                    Profiles determine how Volatility treats our memory image since 
+                                    every version of Windows is a little bit different. Let's see our 
+                                    options now with the command 
+                                    <code>volatility -f MEMORY_FILE.raw imageinfo</code>
+                                </p>
+                                <p>
+                                    Ketik <code>volatility_2.6_win64_standalone.exe -f cridex.vmem imageinfo</code>.
+                                    Jika berhasil, anda akan mendapat infromasi berupa profil yang di tandai dengan
+                                    <code>Suggested Profile(s)</code>
+                                </p>
+                            </li>
+                            <li>
+                                <p style="color: rgb(182, 182, 112);">
+                                    Do this now with the command 
+                                    <code>volatility -f MEMORY_FILE.raw --profile=PROFILE pslist</code>.
+                                    What profile is correct for this memory image?
+                                </p>
+                                <p>
+                                    Jawaban dari nomor 1
+                                </p>
+                            </li>
+                            <li>
+                                <p style="color: rgb(182, 182, 112);">
+                                    Take a look through the processes within our image. 
+                                    What is the process ID for the smss.exe process? 
+                                    If results are scrolling off-screen, try piping your output into less
+                                </p>
+                                <p>
+                                    Jawaban dari nomor 2
+                                </p>
+                            </li>
+                            <li>
+                                <p style="color: rgb(182, 182, 112);">
+                                    In addition to viewing active processes, we can also view active network 
+                                    connections at the time of image creation! Let's do this now with the command 
+                                    <code>volatility -f MEMORY_FILE.raw --profile=PROFILE netscan</code>. 
+                                    Unfortunately, something not great is going to happen here due to the sheer age 
+                                    of the target operating system as the command netscan doesn't support it.
+                                </p>
+                                <p>
+                                    Jika command di jalankan, akan keluar 
+                                    <code>ERROR   : volatility.debug    : This command does not support the profile WinXPSP2x86</code>
+                                </p>
+                            </li>
+                            <li>
+                                <p style="color: rgb(182, 182, 112);">
+                                    It's fairly common for malware to attempt to hide itself and the process 
+                                    associated with it. That being said, we can view intentionally hidden 
+                                    processes via the command <code>psxview</code>. 
+                                    What process has only one 'False' listed?
+                                </p>
+                                <p>
+                                    Gunakan command yang sebelumnya dan ganti bagian akhir jadi 
+                                    <code>volatility_2.6_win64_standalone.exe -f cridex.vmem --profile=PROFILE_DARI_NOMOR_2 psxview</code>.
+                                </p>
+                            </li>
+                            <li>
+                                <p style="color: rgb(182, 182, 112);">
+                                    In addition to viewing hidden processes via psxview, we can also check this with a greater focus v
+                                    ia the command <code>ldrmodules</code>. Three columns will appear here in the middle, 
+                                    InLoad, InInit, InMem. If any of these are false, that module has likely been injected 
+                                    which is a really bad thing. On a normal system the grep statement above should return no output. 
+                                    Which process has all three columns listed as 'False' (other than System)?
+                                </p>
+                                <p>
+                                    Sama seperti nomor 5, gunakan command yang sebelumnya dan ganti bagian belakang menjadi 
+                                    <code>volatility_2.6_win64_standalone.exe -f cridex.vmem --profile=PROFILE_DARI_NOMOR_2 ldrmodules</code>.
+                                </p>
+                            </li>
+                            <li>
+                                <p style="color: rgb(182, 182, 112);">
+                                    Processes aren't the only area we're concerned with when we're examining a machine. 
+                                    Using the apihooks command we can view unexpected patches in the standard system DLLs. 
+                                    If we see an instance where Hooking module: <code><unknown></code> that's really bad. 
+                                    This command will take a while to run, however, it will show you all of the extraneous code introduced 
+                                    by the malware.
+                                </p>
+                                <p>
+                                    Tidak perlu di jawab, tapi jika anda mencoba menjalankan dengan tag 
+                                    <code>apihooks</code> dan stuck pencet <code>ctrl+c</code> untuk membatalkan program
+                                </p>
+                            </li>
+                            <li>
+                                <p style="color: rgb(182, 182, 112);">
+                                    Injected code can be a huge issue and is highly indicative of very very bad things. 
+                                    We can check for this with the command malfind. 
+                                    Using the full command 
+                                    <code>volatility -f MEMORY_FILE.raw --profile=PROFILE malfind -D &lt;Destination Directory&gt;</code> 
+                                    we can not only find this code, but also dump it to our specified directory. 
+                                    Let's do this now! We'll use this dump later for more analysis. How many files does this generate?
+                                </p>
+                                <p>
+                                    Command ini akan mengekstrak data dari <code>cridex.vmem</code> dan akan dump data tersebut untuk di simpan. 
+                                    Buat folder baru untuk menyimpan hasil. Gunakan command 
+                                    <code>volatility_2.6_win64_standalone.exe -f cridex.vmem --profile=PROFILE_DARI_NOMOR_2 malfind -D LOKASI_FOLDER_BARU</code>
+                                </p>
+                            </li>
+                            <li>
+                                <p style="color: rgb(182, 182, 112);">
+                                    Last but certainly not least we can view all of the DLLs loaded into memory. 
+                                    DLLs are shared system libraries utilized in system processes. These are commonly 
+                                    subjected to hijacking and other side-loading attacks, making them a key target for 
+                                    forensics. Let's list all of the DLLs in memory now with the command <code>dlllist</code>
+                                </p>
+                                <p>
+                                    <code>volatility_2.6_win64_standalone.exe -f cridex.vmem --profile=PROFILE_DARI NOMOR 2 dllist</code>
+                                </p>
+                            </li>
+                            <li>
+                                <p style="color: rgb(182, 182, 112);">
+                                    Now that we've seen all of the DLLs running in memory, let's go a step further and pull 
+                                    them out! Do this now with the command 
+                                    <code>volatility -f MEMORY_FILE.raw --profile=PROFILE --pid=PID dlldump -D &lt;Destination Directory&gt;</code> 
+                                    where the PID is the process ID of the infected process we identified earlier 
+                                    (questions five and six). How many DLLs does this end up pulling?
+                                </p>
+                                <p>
+                                    Untuk menemukan PID yang di inginkan pertanyaan, scroll up dari hasil 
+                                    yang sebelumnya dari nomor 5 dan 6. Ada 1 PID yang sama dari hasil 2 nomor 
+                                    tersebut. Untuk flag <code>-D</code> di sarankan untuk membuat folder baru lagi. 
+                                </p>
+                            </li>
+                        </ol>
+                    </p>
+                </p>
+
+                <!--Task 4-->
+                <p class="mt-4 pb-2 border-top">
+                    <h3>Task 4 - Post Actions</h3>
+                    <ol>
+                        <li>
+                            Upload the extracted files to VirusTotal for examination.
+                        </li>
+                        <li>
+                            Upload the extracted files to Hybrid Analysis for examination - 
+                            Note, this will also upload to VirusTotal but for the sake of demonstration 
+                            we have done this separately.
+                        </li>
+                        <li>
+                            What malware has our sample been infected with? You can find this in the results 
+                            of VirusTotal and Hybrid Anaylsis. 
+                        </li>
+                    </ol>
+                    <p>
+                        Untuk task 4 ini, ada kendala yang di temukan. Data yang di upload ke 
+                        VirusTotal dan Hybrid Analysis adalah hasil ekstarsi dari nomor 10 task 3. 
+                        Namun jika di upload baik pada VirusTotal atau Hybrid Analysis, hasil tidak di dapatkan. 
+                        Setelah melakukan simple googling, di dapat hasil dan juga penjelasannya dari 
+                        <a href="https://hex-men.tech/bpvolatililty/">hex-men</a>
+                    </p>
+                </p>
+
+                <!--Task 5-->
+                <p class="mt-4 pb-2 border-top">
+                    <h3>Task 5 - Extra Credits</h3>
+                </p>
+
+                <!--Feedback-->
+                <p class="mt-4 pb-2 border-top">
+                    <h3><i>Feedback</i></h3>
+                    <p>
+                        Ada kiranya bisa memberi tahu saya jika ada kesalahan atau ada penjelasan yang salah.
+                    </p>
+                    <p>
+                        Saya bukan ahli dalam bidang <i>hacking</i> ataupun <i>digital forensics</i>, 
+                        blog ini saya buat sebagai panduan/catatan pribadi, dimana harapannya ini juga bisa 
+                        membantu anda juga.
+                    </p>
+                    <ul>
+                        <li>
+                            Kirim koreksinya ke <a href="https://twitter.com/hatami_rb">twitter saya</a>
+                        </li>
+                        <li>
+                            atau bisa di email ke <a href="mailto:althemier@gmail.com">sini</a>
+                        </li>
+                    </ul>
+
+                    <p>
+                        Cukup sekian, terima kasih.
+                    </p>
+                </p>
+
+                <p class="text-muted">Uploaded: 06/09/2021</p>
+                <p class="text-muted">Last Update: -</p>
+                </div>
+            </div>
+        </div>
+      </div>
+    </main>
+
+    <!--End of Content-->
+
+    <!--Footer-->
+
+    <footer class="sticky-footer">
+      <div class="container my-auto">
+        <div class="copyrigth text-center my-auto pb-4">
+          <span>Copyright &copy; Me I guess ¯\_(ツ)_/¯ , I google alot. Copy as you wish, just credit me if its possible. 
+            Design from: <a href="https://youtu.be/dQw4w9WgXcQ" style="color: aquamarine;">The Internet</a></span>
+        </div>
+      </div>
+    </footer>
+    <!--End of Footer-->
+    <!-- Optional JavaScript; choose one of the two! -->
+
+    <!-- Option 1: Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+
+    <!-- Option 2: Separate Popper and Bootstrap JS -->
+    <!--
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+  -->
+  </body>
+</html>
+
