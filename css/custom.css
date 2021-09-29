@@ -27,3 +27,14 @@ pre {
     background-size: 500px;
 }
 
+body {
+    background-color: black;
+    color: aliceblue;
+}
+
+footer {
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    text-align: center;
+}
